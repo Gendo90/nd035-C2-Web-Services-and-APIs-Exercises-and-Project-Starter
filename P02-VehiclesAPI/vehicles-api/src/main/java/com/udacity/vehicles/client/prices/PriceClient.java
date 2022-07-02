@@ -30,13 +30,14 @@ public class PriceClient {
      *   error message that the vehicle ID is invalid, or note that the
      *   service is down.
      */
-    public String getPrice(Long vehicleId) {
+    // parameter was Long vehicleId before
+    public String getPrice(Long id) {
         try {
             Price price = client
                     .get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("services/price/")
-                            .queryParam("vehicleId", vehicleId)
+                            .path("prices/")
+                            .queryParam("id", id) // was vehicleId before - change back?
                             .build()
                     )
                     .retrieve().bodyToMono(Price.class).block();
@@ -44,7 +45,7 @@ public class PriceClient {
             return String.format("%s %s", price.getCurrency(), price.getPrice());
 
         } catch (Exception e) {
-            log.error("Unexpected error retrieving price for vehicle {}", vehicleId, e);
+            log.error("Unexpected error retrieving price for vehicle {}", id, e); // was vehicleId
         }
         return "(consult price)";
     }
