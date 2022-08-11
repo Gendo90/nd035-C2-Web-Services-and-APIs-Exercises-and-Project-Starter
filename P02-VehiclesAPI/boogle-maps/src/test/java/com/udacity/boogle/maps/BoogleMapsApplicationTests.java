@@ -11,6 +11,7 @@ public class BoogleMapsApplicationTests {
 
 	@Test
 	public void contextLoads() {
+		System.out.println("Test runs!");
 	}
 
 }
