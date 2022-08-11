@@ -1,5 +1,6 @@
 package com.udacity.vehicles.domain.car;
 
+import com.udacity.vehicles.client.prices.Price;
 import com.udacity.vehicles.domain.Condition;
 import com.udacity.vehicles.domain.Location;
 import java.time.LocalDateTime;
