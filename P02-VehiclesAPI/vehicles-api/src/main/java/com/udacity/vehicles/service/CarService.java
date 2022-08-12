@@ -4,6 +4,7 @@ import com.udacity.vehicles.domain.Location;
 import com.udacity.vehicles.domain.car.Car;
 import com.udacity.vehicles.domain.car.CarRepository;
 import com.udacity.vehicles.client.maps.MapsClient;
+import com.udacity.vehicles.client.prices.FeignPriceClient;
 import com.udacity.vehicles.client.prices.Price;
 import com.udacity.vehicles.client.prices.PriceClient;
 
@@ -22,11 +23,13 @@ public class CarService {
 	
 	private final MapsClient mapClient;
 	private final PriceClient priceClient;
+	private final FeignPriceClient feignPriceClient;
     private final CarRepository repository;
 
-    public CarService(MapsClient mapClient, PriceClient priceClient, CarRepository repository) {
+    public CarService(MapsClient mapClient, PriceClient priceClient, FeignPriceClient feignPriceClient, CarRepository repository) {
     	this.mapClient = mapClient;
     	this.priceClient = priceClient;
+    	this.feignPriceClient = feignPriceClient;
         this.repository = repository;
     }
 
@@ -52,7 +55,18 @@ public class CarService {
          * Note: The car class file uses @transient, meaning you will need to call
          *   the pricing service each time to get the price.
          */
-    	String carPriceString = priceClient.getPrice(id);
+    	//String carPriceString = priceClient.getPrice(id);
+        String carPriceString;
+        try {
+        	Price carPrice = feignPriceClient.getPriceById(id);
+        	carPriceString = String.format("%s %s", carPrice.getCurrency(), carPrice.getPrice()); 
+        }
+        catch (Exception e) {
+        	System.out.println("Price is not working!");
+        	System.out.println(e.getMessage());
+        	carPriceString = "{ consult price }";
+        }
+        
         car.setPrice(carPriceString);
         
 
