@@ -12,13 +12,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.udacity.vehicles.client.maps.MapsClient;
-import com.udacity.vehicles.client.prices.PriceClient;
+import com.udacity.vehicles.client.prices.FeignPriceClient;
+import com.udacity.vehicles.client.prices.Price;
 import com.udacity.vehicles.domain.Condition;
 import com.udacity.vehicles.domain.Location;
 import com.udacity.vehicles.domain.car.Car;
 import com.udacity.vehicles.domain.car.Details;
 import com.udacity.vehicles.domain.manufacturer.Manufacturer;
 import com.udacity.vehicles.service.CarService;
+
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.Collections;
 import org.junit.Before;
@@ -53,7 +56,7 @@ public class CarControllerTest {
     private CarService carService;
 
     @MockBean
-    private PriceClient priceClient;
+    private FeignPriceClient feignPriceClient;
 
     @MockBean
     private MapsClient mapsClient;
@@ -66,7 +69,6 @@ public class CarControllerTest {
         Car car = getCar();
         car.setId(1L);
         given(carService.save(any())).willReturn(car);
-        given(carService.findById(any())).willReturn(car);
         given(carService.list()).willReturn(Collections.singletonList(car));
     }
 
@@ -77,12 +79,18 @@ public class CarControllerTest {
     @Test
     public void createCar() throws Exception {
         Car car = getCar();
+        
+        // expected car
+        Car expectedCar = getCar();
+        expectedCar.setId(1L);
+        
         mvc.perform(
                 post(new URI("/cars"))
                         .content(json.write(car).getJson())
                         .contentType(MediaType.APPLICATION_JSON_UTF8)
                         .accept(MediaType.APPLICATION_JSON_UTF8))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andExpect(content().json(json.write(expectedCar).getJson()));
     }
 
     /**
@@ -95,7 +103,13 @@ public class CarControllerTest {
          * TODO: Add a test to check that the `get` method works by calling
          *   the whole list of vehicles. This should utilize the car from `getCar()`
          *   below (the vehicle will be the first in the list).
-         */
+         */    	
+        
+    	mvc.perform(
+                get(new URI("/cars"))
+                        .contentType(MediaType.APPLICATION_JSON_UTF8)
+                        .accept(MediaType.APPLICATION_JSON_UTF8))
+                .andExpect(status().isOk());
 
     }
 
@@ -109,6 +123,33 @@ public class CarControllerTest {
          * TODO: Add a test to check that the `get` method works by calling
          *   a vehicle by ID. This should utilize the car from `getCar()` below.
          */
+    	Car car = getCar();
+    	
+    	// expected car
+        Car expectedCar = getCar();
+        Long carId = 1L;
+        expectedCar.setId(carId);
+        
+        // feign price client response - not necessary here, should be tested in CarServiceTest
+        Price price = getPrice();
+        given(feignPriceClient.getPriceById(any())).willReturn(price);
+        
+        expectedCar.setPrice(price.getCurrency() + " " + price.getPrice().toString());
+        
+        // map client response - not necessary here, should be tested in CarServiceTest
+        Location fullLocation = getFullLocation(car.getLocation());
+        given(mapsClient.getAddress(car.getLocation())).willReturn(fullLocation);
+        
+        expectedCar.setLocation(fullLocation);
+        
+        given(carService.findById(1L)).willReturn(expectedCar);
+        
+        mvc.perform(
+                get(new URI("/cars/" + carId))
+                        .contentType(MediaType.APPLICATION_JSON_UTF8)
+                        .accept(MediaType.APPLICATION_JSON_UTF8))
+                .andExpect(status().isOk())
+                .andExpect(content().json(json.write(expectedCar).getJson()));
     }
 
     /**
@@ -122,6 +163,13 @@ public class CarControllerTest {
          *   when the `delete` method is called from the Car Controller. This
          *   should utilize the car from `getCar()` below.
          */
+    	Long carId = 1L;
+    	
+    	mvc.perform(
+                delete(new URI("/cars/" + carId))
+                        .contentType(MediaType.APPLICATION_JSON_UTF8)
+                        .accept(MediaType.APPLICATION_JSON_UTF8))
+                .andExpect(status().isNoContent());
     }
 
     /**
@@ -146,5 +194,32 @@ public class CarControllerTest {
         car.setDetails(details);
         car.setCondition(Condition.USED);
         return car;
+    }
+    
+    /**
+     * Creates an example Price object for use in testing.
+     * @return an example Price object
+     */
+    private Price getPrice() {
+        Price price = new Price();
+        price.setCurrency("USD");
+        price.setPrice(new BigDecimal(10000.00));
+        price.setVehicleId(1L);
+        
+        return price;
+    }
+    
+    /**
+     * Creates an example Location object for use in testing.
+     * @return an example Location object
+     */
+    private Location getFullLocation(Location partialLocation) {
+        Location fullLocation = new Location(partialLocation.getLat(), partialLocation.getLon());
+        fullLocation.setAddress("1600 Pennsylvania Avenue");
+        fullLocation.setCity("Washington, D.C.");
+        fullLocation.setState("Virginia");
+        fullLocation.setZip("90210");
+        
+        return fullLocation;
     }
 }
